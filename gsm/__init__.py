@@ -19,5 +19,7 @@ def create_app():
   db.init_app(app)
   from gsm.views import init_admin
   init_admin(app)
+  from gsm.cli import init_cli
+  init_cli(app)
   return app
 
