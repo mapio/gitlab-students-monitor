@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling", "hatch-regex-commit"]
+build-backend = "hatchling.build"
+[project]
+name = "GitLabStudentsMonitoring"
+requires-python = ">=3.12"
+description = "A database to keep track of students' progress on GitLab."
+readme = "README.md"
+authors = [
+  { name = "Massimo Santini", email = "massimo.santini@unimi.it" },
+]
+dependencies = [
+  "Flask-Admin>=1.6.1",
+  "Flask-SQLAlchemy>=3.1.1"
+]
+dynamic = ["version"]
+[project.urls]
+Changelog = "https://github.com/mapio/gitlab-monitor/blob/master/CHANGELOG.txt"
+Homepage = "https://github.com/mapio/gitlab-monitor"
+[tool.hatch.metadata]
+allow-direct-references = true
+[tool.hatch.version]
+source = "regex_commit"
+path = "gm/__init__.py"
+[tool.hatch.build]
+include = [
+  "gm/**"
+]
+[tool.hatch.envs.devel]
+detached = true
+dependencies = [
+  "gitchangelog",
+  "pystache",
+  "flake8",
+  "black",
+  "isort",
+]
+[tool.hatch.envs.devel.scripts]
+check = [
+  "flake8 ./gm",
+  "black --check --diff ./gm",
+  "isort --check-only --diff ./gm",
+]
+fmt = [
+  "isort ./gm",
+  "black ./gm",
+  "check",
+]
