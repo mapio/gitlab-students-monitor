@@ -6,6 +6,7 @@ from tomllib import load
 
 from gsm import LOG
 
+
 def configure(app):
 
   if not 'GSM_CONFIG_FILE' in environ:
@@ -22,9 +23,10 @@ def configure(app):
     LOG.setLevel(getattr(logging, level))
     LOG.info('Log level set to %s', level)
 
-  app.config['GITLAB_URL'] = CONFS['gitlab']['URL']
+  app.config['GITLAB_ENDPOINT'] = CONFS['gitlab']['ENDPOINT']
   app.config['GITLAB_TOKEN'] = CONFS['gitlab']['TOKEN']
   app.config['GITLAB_GROUP'] = CONFS['gitlab']['GROUP']
+  app.config['GITLAB_BASEURL'] = CONFS['gitlab']['BASEURL']
 
   dbfile = Path(app.instance_path) / 'gsm.sqlite'
   if 'SQLITE_DATABASE_FILE' in CONFS['environment']:

@@ -1,12 +1,14 @@
-import click
-from flask.cli import with_appcontext
-from flask import current_app
-from tqdm import tqdm
-from gitlab import Gitlab
 from datetime import datetime
 from pathlib import Path
 
+import click
+from flask import current_app
+from flask.cli import with_appcontext
+from gitlab import Gitlab
+from tqdm import tqdm
+
 from gsm.models import *
+
 
 def datestr2obj(string):
   return datetime.fromisoformat(string[0:string.index('.')])
@@ -26,7 +28,7 @@ def update_students():
   dbs = db.session
   try:
     known = frozenset(dbs.execute(db.select(Student.id)).scalars().all())
-    with Gitlab(url = current_app.config['GITLAB_URL'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
+    with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for student in tqdm(gl.groups.get(current_app.config['GITLAB_GROUP']).subgroups.list(all = True), position = 0):
         if student.id in known: continue
         dbs.add(Student(id = student.id, name = student.name, created_at = datestr2obj(student.created_at)))
@@ -57,7 +59,7 @@ def update_solutions():
   try:
     known = frozenset(dbs.execute(db.select(Solution.id)).scalars().all())
     exercise2id = dict(dbs.execute(db.select(Exercise.name, Exercise.id)).all())
-    with Gitlab(url = current_app.config['GITLAB_URL'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
+    with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for student in tqdm(dbs.execute(db.select(Student)).scalars().all(), position = 0):
         for solution in gl.groups.get(student.id).projects.list(all = True):
           if solution.id in known: continue
@@ -77,7 +79,7 @@ def update_pipelines():
   dbs = db.session
   try:
     known = frozenset(dbs.execute(db.select(Pipeline.id)).scalars().all()) | frozenset(dbs.execute(db.select(DiscardedPipeline.id)).scalars().all())
-    with Gitlab(url = current_app.config['GITLAB_URL'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
+    with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for solution in tqdm(dbs.execute(db.select(Solution)).scalars().all(), position = 0):
         project = gl.projects.get(solution.id)
         for pipeline in project.pipelines.list(all = True):
@@ -111,7 +113,7 @@ def update_jobs():
   projects = {}
   try:
     known = set()#frozenset(dbs.execute(db.select(Job.id)).scalars().all())
-    with Gitlab(url = current_app.config['GITLAB_URL'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
+    with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for pipeline in tqdm(dbs.execute(db.select(Pipeline)).scalars().all(), position = 0):
         if pipeline.solution_id not in projects: projects[pipeline.solution_id] = gl.projects.get(pipeline.solution_id)
         for job in projects[pipeline.solution_id].pipelines.get(pipeline.id).jobs.list(all = True):
