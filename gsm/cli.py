@@ -112,7 +112,7 @@ def update_jobs():
   dbs = db.session
   projects = {}
   try:
-    known = set()#frozenset(dbs.execute(db.select(Job.id)).scalars().all())
+    known = frozenset(dbs.execute(db.select(Job.id)).scalars().all())
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for pipeline in tqdm(dbs.execute(db.select(Pipeline)).scalars().all(), position = 0):
         if pipeline.solution_id not in projects: projects[pipeline.solution_id] = gl.projects.get(pipeline.solution_id)
