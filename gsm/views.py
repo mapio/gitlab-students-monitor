@@ -9,14 +9,29 @@ from flask_admin.model.template import LinkRowAction
 from gsm import __version__
 from gsm.models import *
 
+SATUS2ICON = {
+  'success': '✅',
+  'failed': '❌',
+  'canceled': '✋',
+  'pending': '🤔',
+  'running': '🏃',
+}
+
 class ROModelView(ModelView):
   can_view_details = True
   can_create = False
   can_edit = False
   can_delete = False
 
+def pipeline2gitlaburl(sol, id):
+  return f'{current_app.config["GITLAB_BASEURL"]}{sol.student.name}/{sol.student.name}-{sol.exercise.name}/-/pipelines/{id}'
+
+def jobs2str(jobs):
+  return '&nbsp;&nbsp;'.join(f'<span title="{j.status}">{SATUS2ICON[j.status]}</span>&nbsp;{j.name}' for j in jobs)
+
 class StudentView(ROModelView):
   column_sortable_list = column_filters = column_list = ['name', 'created_at', 'num_solutions', 'num_pipelines']
+  column_default_sort = ('name', False)
   column_details_list = ['name', 'created_at', 'solutions']
   column_extra_row_actions = [
     LinkRowAction('fa fa-arrow-circle-right', lambda s, i, r: current_app.config["GITLAB_BASEURL"] + r.name),
@@ -27,20 +42,27 @@ class StudentView(ROModelView):
 
 class SolutionView(ROModelView):
   column_sortable_list = column_filters = column_list = ['created_at', 'student.name', 'exercise.name', 'num_pipelines']
+  column_default_sort = ('created_at', True)
   column_labels = {
     'student.name': 'Student', 
-    'exercise.name': 'Exercise'
+    'exercise.name': 'Exercise'                                                                                                                                                                                                                                                                                                                                                                                                                               
   }
   column_extra_row_actions = [
     LinkRowAction('fa fa-arrow-circle-right', lambda s, i, r: current_app.config["GITLAB_BASEURL"] + r.student.name + '/' + r.student.name + '-' + r.exercise.name),
   ]
-  column_details_list = ['pipelines']
+  column_details_list = column_list + ['pipelines']
   column_formatters_detail = {
-    'pipelines': lambda v, c, m, p: Markup('<ul>' + '\n'.join(f'<li><a href="{url_for("pipeline.details_view", id = p.id)}">{p.id}</a> ({p.status} {p.jobs})' for p in m.pipelines) + '</ul>')
+    'pipelines': lambda v, c, m, p: Markup('<ul>' + '\n'.join(f'<li><span title="{p.status}">{SATUS2ICON[p.status]} <a href="{pipeline2gitlaburl(p.solution, p.id)}">{p.created_at}</a> {jobs2str(p.jobs)}' for p in m.pipelines) + '</ul>')
   }
+  def get_query(self):
+    return super().get_query().filter(self.model.num_pipelines>0)
+  def get_count_query(self):
+    return self.session.execute(select(func.count(self.model.id)).where(self.model.num_pipelines>0))
 
 class PipelineView(ROModelView):
+  can_view_details = False
   column_filters = column_list = ['created_at', 'solution.student.name', 'solution.exercise.name', 'status', 'jobs', 'summary_count', 'summary_success', 'summary_failed', 'summary_skipped', 'summary_error']
+  column_default_sort = ('created_at', True)
   column_sortable_list = ['created_at', 'solution.student.name', 'solution.exercise.name', 'status', ('jobs', 'jobs.name'), 'summary_count', 'summary_success', 'summary_failed', 'summary_skipped', 'summary_error']
   column_labels = {
     'solution.student.name': 'Student', 
@@ -51,10 +73,13 @@ class PipelineView(ROModelView):
     'summary_skipped': '# Skipped',
     'summary_error': '# Error'
   }
+  column_formatters = {
+    'status': lambda v, c, m, p: Markup(f'<span title="{m.status}">{SATUS2ICON[m.status]}</span>'),
+    'jobs': lambda v, c, m, p: Markup(jobs2str(m.jobs))
+  }
   column_extra_row_actions = [
-    LinkRowAction('fa fa-arrow-circle-right', lambda s, i, r: current_app.config["GITLAB_BASEURL"] + r.solution.student.name + '/' + r.solution.student.name + '-' + r.solution.exercise.name + '/-/pipelines/' + i),
+    LinkRowAction('fa fa-arrow-circle-right', lambda s, i, r: pipeline2gitlaburl(r.solution, i))
   ]
-  column_details_list = ['jobs']
 
 class ExerciseView(ROModelView):
   can_view_details = False

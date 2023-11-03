@@ -27,12 +27,16 @@ def init_db():
 def update_students():
   dbs = db.session
   try:
+    dbs.begin()
     known = frozenset(dbs.execute(db.select(Student.id)).scalars().all())
+    added = []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for student in tqdm(gl.groups.get(current_app.config['GITLAB_GROUP']).subgroups.list(all = True), position = 0):
         if student.id in known: continue
         dbs.add(Student(id = student.id, name = student.name, created_at = datestr2obj(student.created_at)))
+        added.append(student.id)
     dbs.commit()
+    if added: print('Added:', added)
   except Exception:
     dbs.rollback()
     raise
@@ -43,11 +47,15 @@ def update_students():
 def update_exercises(path):
   dbs = db.session
   try:
+    dbs.begin()
     known = frozenset(dbs.execute(db.select(Exercise.name)).scalars().all())
+    added = []
     for exercise in Path(path).iterdir():
       if not exercise.is_dir() or exercise.name in known: continue
       dbs.add(Exercise(name = exercise.name))
+      added.append(exercise.name)
     dbs.commit()
+    if added: print('Added:', added)
   except Exception:
     dbs.rollback()
     raise
@@ -57,8 +65,10 @@ def update_exercises(path):
 def update_solutions():
   dbs = db.session
   try:
+    dbs.begin()
     known = frozenset(dbs.execute(db.select(Solution.id)).scalars().all())
     exercise2id = dict(dbs.execute(db.select(Exercise.name, Exercise.id)).all())
+    added = []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for student in tqdm(dbs.execute(db.select(Student)).scalars().all(), position = 0):
         for solution in gl.groups.get(student.id).projects.list(all = True):
@@ -68,7 +78,10 @@ def update_solutions():
           exercise = solution.name[len(prefix):]
           if not exercise in exercise2id: continue
           dbs.add(Solution(id = solution.id, created_at = datestr2obj(solution.created_at), exercise_id = exercise2id[exercise], student_id = student.id))
+          added.append(solution.id)
+        dbs.flush()
     dbs.commit()
+    if added: print('Added:', added)
   except Exception:
     dbs.rollback()
     raise
@@ -78,7 +91,9 @@ def update_solutions():
 def update_pipelines():
   dbs = db.session
   try:
+    dbs.begin()
     known = frozenset(dbs.execute(db.select(Pipeline.id)).scalars().all()) | frozenset(dbs.execute(db.select(DiscardedPipeline.id)).scalars().all())
+    added = []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for solution in tqdm(dbs.execute(db.select(Solution)).scalars().all(), position = 0):
         project = gl.projects.get(solution.id)
@@ -101,7 +116,10 @@ def update_pipelines():
             summary_skipped = summary['skipped'],
             summary_error = summary['error']
           ))
+          added.append(pipeline.id)
+      dbs.flush()    
     dbs.commit()
+    if added: print('Added:', added)
   except Exception:
     dbs.rollback()
     raise
@@ -112,14 +130,19 @@ def update_jobs():
   dbs = db.session
   projects = {}
   try:
+    dbs.begin()
     known = frozenset(dbs.execute(db.select(Job.id)).scalars().all())
+    added = []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for pipeline in tqdm(dbs.execute(db.select(Pipeline)).scalars().all(), position = 0):
         if pipeline.solution_id not in projects: projects[pipeline.solution_id] = gl.projects.get(pipeline.solution_id)
         for job in projects[pipeline.solution_id].pipelines.get(pipeline.id).jobs.list(all = True):
           if job.id in known or job.user['username'] != pipeline.solution.student.name: continue
           dbs.add(Job(id = job.id, pipeline_id = pipeline.id, status = job.status, name = job.name))
+          added.append(job.id)
+      dbs.flush()    
     dbs.commit()
+    if added: print('Added:', added)
   except Exception:
     dbs.rollback()
     raise

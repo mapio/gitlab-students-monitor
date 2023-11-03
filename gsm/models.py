@@ -4,8 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import (DateTime, ForeignKey, Integer, String, event, func,
                         select)
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import (DeclarativeBase, Mapped, column_property,
-                            mapped_column, relationship)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from gsm import LOG
 
@@ -25,22 +24,19 @@ class Student(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
   name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
   created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
-  solutions: Mapped[List['Solution']] = relationship(back_populates='student')
-
+  solutions: Mapped[List['Solution']] = relationship(back_populates='student', order_by = 'desc(Solution.created_at)')
   @hybrid_property
   def num_solutions(self):
     return len(self.solutions)
   @num_solutions.expression
   def num_solutions(cls):
     return select(func.count(Solution.id)).where(Solution.student_id == Student.id).scalar_subquery()
-
   @hybrid_property
   def num_pipelines(self):
     return sum(len(s.pipelines) for s in self.solutions)
   @num_pipelines.expression
   def num_pipelines(cls):
     return select(func.count(Pipeline.id)).join(Solution).where(Solution.student_id == Student.id).scalar_subquery()
-
   def __repr__(self):
     return self.name
   
@@ -58,21 +54,15 @@ class Solution(db.Model):
   student_id: Mapped[int] = mapped_column(ForeignKey('student.id'))
   student: Mapped[Student] = relationship(back_populates='solutions')
   created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
-  pipelines: Mapped[List['Pipeline']] = relationship(back_populates='solution')
-
+  pipelines: Mapped[List['Pipeline']] = relationship(back_populates='solution', order_by = 'desc(Pipeline.created_at)')
   @hybrid_property
   def num_pipelines(self):
     return len(self.pipelines)
   @num_pipelines.expression
   def num_pipelines(cls):
     return select(func.count(Pipeline.id)).where(Pipeline.solution_id == Solution.id).scalar_subquery()
-
   def __repr__(self):
     return f'{self.exercise.name}@{self.created_at} ({self.student.name})'
-
-# Student.num_solutions = column_property(
-#   select(func.count(Solution.id)).where(Solution.student_id == Student.id).scalar_subquery()
-# )
 
 class DiscardedPipeline(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -92,14 +82,6 @@ class Pipeline(db.Model):
   jobs: Mapped[List['Job']] = relationship(back_populates='pipeline')
   def __repr__(self):
     return f'{self.solution} @ {self.created_at}'
-
-# Student.num_pipelines = column_property(
-#   select(func.count(Pipeline.id)).join(Solution).where(Solution.student_id == Student.id).scalar_subquery()
-# )
-
-# Solution.num_pipelines = column_property(
-#   select(func.count(Pipeline.id)).where(Pipeline.solution_id == Solution.id).scalar_subquery()
-# )
 
 class Job(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
