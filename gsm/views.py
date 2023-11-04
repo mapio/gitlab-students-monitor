@@ -13,7 +13,8 @@ SATUS2ICON = {
   'failed': '❌',
   'canceled': '✋',
   'pending': '🤔',
-  'running': '🏃',
+  'running': '🏃', 
+  'created': '👶',
 }
 
 class ROModelView(ModelView):

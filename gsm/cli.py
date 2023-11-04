@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from gsm.models import *
 
+ACCEPTED_STATUSES = frozenset(['success', 'failed' 'canceled'])
 
 def datestr2obj(string):
   if string is None: return None
@@ -110,6 +111,7 @@ def update_pipelines():
           if pipeline.user['username'] != solution.student.name:
             dbs.add(DiscardedPipeline(id = pipeline.id))
             continue
+          if pipeline.status not in ACCEPTED_STATUSES: continue
           summary = pipeline.test_report_summary.get().total
           dbs.add(Pipeline(
             id = pipeline.id, 
