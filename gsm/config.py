@@ -29,7 +29,9 @@ def configure(app):
   app.config['GITLAB_BASEURL'] = CONFS['gitlab']['BASEURL']
 
   dbfile = Path(app.instance_path) / 'gsm.sqlite'
-  if 'SQLITE_DATABASE_FILE' in CONFS['environment']:
+  if 'GSM_SQLITE_DATABASE_FILE' in environ:
+    dbfile = Path(environ['GSM_SQLITE_DATABASE_FILE'])
+  elif 'SQLITE_DATABASE_FILE' in CONFS['environment']:
     dbfile = Path(CONFS['environment']['SQLITE_DATABASE_FILE'])
   app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + str(dbfile.absolute())
   LOG.info('Using database %s', app.config['SQLALCHEMY_DATABASE_URI'])

@@ -1,8 +1,7 @@
 from typing import List
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import (DateTime, ForeignKey, Integer, String, event, func,
-                        select)
+from sqlalchemy import DateTime, ForeignKey, Integer, String, event, func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -24,7 +23,7 @@ class Student(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
   name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
   created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
-  solutions: Mapped[List['Solution']] = relationship(back_populates='student', order_by = 'desc(Solution.created_at)')
+  solutions: Mapped[List['Solution']] = relationship(back_populates='student', order_by = 'desc(Solution.created_at)', cascade='all, delete', passive_deletes=True)
   @hybrid_property
   def num_solutions(self):
     return len(self.solutions)
@@ -51,10 +50,11 @@ class Solution(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
   exercise_id: Mapped[int] = mapped_column(ForeignKey('exercise.id'))
   exercise: Mapped[Exercise] = relationship(back_populates='solutions')
-  student_id: Mapped[int] = mapped_column(ForeignKey('student.id'))
+  student_id: Mapped[int] = mapped_column(ForeignKey('student.id', ondelete='CASCADE'))
   student: Mapped[Student] = relationship(back_populates='solutions')
   created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
-  pipelines: Mapped[List['Pipeline']] = relationship(back_populates='solution', order_by = 'desc(Pipeline.created_at)')
+  last_activity_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
+  pipelines: Mapped[List['Pipeline']] = relationship(back_populates='solution', order_by = 'desc(Pipeline.created_at)', cascade='all, delete', passive_deletes=True)
   @hybrid_property
   def num_pipelines(self):
     return len(self.pipelines)
@@ -62,14 +62,14 @@ class Solution(db.Model):
   def num_pipelines(cls):
     return select(func.count(Pipeline.id)).where(Pipeline.solution_id == Solution.id).scalar_subquery()
   def __repr__(self):
-    return f'{self.exercise.name}@{self.created_at} ({self.student.name})'
+    return f'{self.exercise.name}@{self.last_activity_at} ({self.student.name})'
 
 class DiscardedPipeline(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 class Pipeline(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
-  solution_id: Mapped[int] = mapped_column(ForeignKey('solution.id'))
+  solution_id: Mapped[int] = mapped_column(ForeignKey('solution.id', ondelete='CASCADE'))
   solution: Mapped[Solution] = relationship(back_populates='pipelines')
   status: Mapped[str] = mapped_column(String, nullable=False)
   created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
@@ -79,15 +79,17 @@ class Pipeline(db.Model):
   summary_failed: Mapped[int] = mapped_column(Integer)
   summary_skipped: Mapped[int] = mapped_column(Integer)
   summary_error: Mapped[int] = mapped_column(Integer)
-  jobs: Mapped[List['Job']] = relationship(back_populates='pipeline')
+  jobs: Mapped[List['Job']] = relationship(back_populates='pipeline', cascade='all, delete', passive_deletes=True)
   def __repr__(self):
     return f'{self.solution} @ {self.created_at}'
 
 class Job(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
-  pipeline_id: Mapped[int] = mapped_column(ForeignKey('pipeline.id'))
+  pipeline_id: Mapped[int] = mapped_column(ForeignKey('pipeline.id', ondelete='CASCADE'))
   pipeline: Mapped[Pipeline] = relationship(back_populates='jobs')
   status: Mapped[str] = mapped_column(String, nullable=False)
   name: Mapped[str] = mapped_column(String, nullable=False)
+  runner: Mapped[str] = mapped_column(String, nullable=True)
+  duration: Mapped[int] = mapped_column(Integer, nullable=True)
   def __repr__(self):
     return f'{self.name} {self.status}'

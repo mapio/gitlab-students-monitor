@@ -11,6 +11,7 @@ from gsm.models import *
 
 
 def datestr2obj(string):
+  if string is None: return None
   return datetime.fromisoformat(string[0:string.index('.')])
 
 @click.command()
@@ -31,7 +32,7 @@ def update_students():
     known = frozenset(dbs.execute(db.select(Student.id)).scalars().all())
     added = []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
-      for student in tqdm(gl.groups.get(current_app.config['GITLAB_GROUP']).subgroups.list(all = True), position = 0):
+      for student in tqdm(gl.groups.get(current_app.config['GITLAB_GROUP']).subgroups.list(all = False), position = 0):
         if student.id in known: continue
         dbs.add(Student(id = student.id, name = student.name, created_at = datestr2obj(student.created_at)))
         added.append(student.id)
@@ -77,7 +78,13 @@ def update_solutions():
           if not solution.name.startswith(prefix): continue
           exercise = solution.name[len(prefix):]
           if not exercise in exercise2id: continue
-          dbs.add(Solution(id = solution.id, created_at = datestr2obj(solution.created_at), exercise_id = exercise2id[exercise], student_id = student.id))
+          dbs.add(Solution(
+            id = solution.id, 
+            created_at = datestr2obj(solution.created_at), 
+            last_activity_at = datestr2obj(solution.last_activity_at),
+            exercise_id = exercise2id[exercise], 
+            student_id = student.id
+          ))
           added.append(solution.id)
         dbs.flush()
     dbs.commit()
@@ -138,7 +145,14 @@ def update_jobs():
         if pipeline.solution_id not in projects: projects[pipeline.solution_id] = gl.projects.get(pipeline.solution_id)
         for job in projects[pipeline.solution_id].pipelines.get(pipeline.id).jobs.list(all = True):
           if job.id in known or job.user['username'] != pipeline.solution.student.name: continue
-          dbs.add(Job(id = job.id, pipeline_id = pipeline.id, status = job.status, name = job.name))
+          dbs.add(Job(
+            id = job.id, 
+            pipeline_id = pipeline.id, 
+            status = job.status, 
+            name = job.name,
+            duration = job.duration,
+            runner = job.runner['description'] if job.runner else None
+          ))
           added.append(job.id)
       dbs.flush()    
     dbs.commit()
