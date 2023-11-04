@@ -1,0 +1,11 @@
+#/!bin/bash
+
+version=$(hatch version)
+
+echo "Building gsm:$version"
+hatch env prune
+hatch env create
+hatch build
+
+docker build --build-arg version=$version -t gsm:$version .
+docker save gsm:$version -o ./dist/gsm-$version.tar
