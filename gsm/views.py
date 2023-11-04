@@ -20,7 +20,7 @@ class ROModelView(ModelView):
   can_view_details = True
   can_create = False
   can_edit = False
-  #can_delete = False
+  can_delete = False
 
 def solution2gitlaburl(student):
   return f'{current_app.config["GITLAB_BASEURL"]}{student.name}'
@@ -72,7 +72,7 @@ class SolutionView(AllSolutionView):
     return super().get_count_query().filter(self.model.num_pipelines>0)
 
 class PipelineView(ROModelView):
-  column_filters = column_list = ['created_at', 'solution.student.name', 'solution.exercise.name', 'status', 'jobs', 'summary_count', 'summary_success', 'summary_failed', 'summary_skipped', 'summary_error']
+  column_details_list = column_filters = column_list = ['created_at', 'solution.student.name', 'solution.exercise.name', 'status', 'summary_count', 'summary_success', 'summary_failed', 'summary_skipped', 'summary_error', 'jobs']
   column_default_sort = ('created_at', True)
   column_sortable_list = ['created_at', 'solution.student.name', 'solution.exercise.name', 'status', ('jobs', 'jobs.name'), 'summary_count', 'summary_success', 'summary_failed', 'summary_skipped', 'summary_error']
   column_labels = {
@@ -88,13 +88,12 @@ class PipelineView(ROModelView):
     'status': lambda v, c, m, p: Markup(f'<span title="{m.status}">{SATUS2ICON[m.status]}</span>'),
     'jobs': lambda v, c, m, p: Markup(jobs2str(m.jobs))
   }
-  column_extra_row_actions = [
-    LinkRowAction('fa fa-arrow-circle-right', lambda s, i, r: pipeline2gitlaburl(r.solution, i))
-  ]
-  column_details_list = column_list + ['jobs']
   column_formatters_detail = {
     'jobs': lambda v, c, m, p: Markup('<ul>' + '\n'.join(f'<li><span title="{j.status}">{SATUS2ICON[j.status]} <a href="{job2gitlaburl(j, j.id)}">{j.name}</a>' for j in m.jobs) + '</ul>')
   }
+  column_extra_row_actions = [
+    LinkRowAction('fa fa-arrow-circle-right', lambda s, i, r: pipeline2gitlaburl(r.solution, i))
+  ]
 
 class ExerciseView(ROModelView):
   can_view_details = False

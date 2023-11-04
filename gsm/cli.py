@@ -32,7 +32,7 @@ def update_students():
     known = frozenset(dbs.execute(db.select(Student.id)).scalars().all())
     added = []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
-      for student in tqdm(gl.groups.get(current_app.config['GITLAB_GROUP']).subgroups.list(all = False), position = 0):
+      for student in tqdm(gl.groups.get(current_app.config['GITLAB_GROUP']).subgroups.list(all = True), position = 0):
         if student.id in known: continue
         dbs.add(Student(id = student.id, name = student.name, created_at = datestr2obj(student.created_at)))
         added.append(student.id)
