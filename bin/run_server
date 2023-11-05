@@ -2,4 +2,6 @@
 
 version=$1
 
+docker rm -f gsm
+sleep 5
 docker run --restart=always --name gsm -d -p 8000:8000 -v $(pwd)/confs.toml:/data/gsm_config.toml -v $(pwd)/gsm.sqlite:/data/gsm.sqlite gsm:$version

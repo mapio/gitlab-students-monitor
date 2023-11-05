@@ -1,9 +1,12 @@
+from datetime import datetime
+
 from flask import current_app, url_for
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
+from humanize import naturaltime, precisedelta
 from markupsafe import Markup
 
-from flask_admin.model.template import LinkRowAction, EndpointLinkRowAction
+from flask_admin.model.template import LinkRowAction
 
 from gsm import __version__
 from gsm.models import *
@@ -23,6 +26,9 @@ class ROModelView(ModelView):
   can_create = False
   can_edit = False
   can_delete = False
+  column_type_formatters = {
+    datetime: lambda w, v: Markup(f'<span title="{v}">{naturaltime(v)}</span>')
+  }
 
 def pipeline2gitlaburl(sol, id):
   student = sol.student.name
@@ -132,6 +138,7 @@ class JobView(ROModelView):
   }
   column_formatters = {
     'status': lambda v, c, m, p: Markup(f'<span title="{m.status}">{SATUS2ICON[m.status]}</span>'),
+    'duration': lambda v, c, m, p: Markup(f'<span title="{m.duration}">{precisedelta(m.duration)}</span>'),
   }
   column_extra_row_actions = [
     LinkRowAction('fa fa-arrow-up-right-from-square', lambda s, i, r: job2gitlaburl(r, i))
