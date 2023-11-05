@@ -1,6 +1,9 @@
 #/!bin/bash
 
 version=$1
+if [ -z $version ]; then
+    version=$(hatch version)
+fi 
 
 echo "Building gsm:$version"
 hatch env prune
