@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from gsm.models import *
 
-ACCEPTED_STATUSES = frozenset(['success', 'failed' 'canceled'])
+ACCEPTED_STATUSES = frozenset(['success', 'failed', 'canceled'])
 
 def datestr2obj(string):
   if string is None: return None
