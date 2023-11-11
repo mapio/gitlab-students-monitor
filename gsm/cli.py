@@ -70,11 +70,18 @@ def update_solutions():
     dbs.begin()
     known = frozenset(dbs.execute(db.select(Solution.id)).scalars().all())
     exercise2id = dict(dbs.execute(db.select(Exercise.name, Exercise.id)).all())
-    added = []
+    added, updated = [], []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for student in tqdm(dbs.execute(db.select(Student)).scalars().all(), position = 0):
         for solution in gl.groups.get(student.id).projects.list(all = True):
-          if solution.id in known: continue
+          if solution.id in known: 
+            s = dbs.query(Solution).get(solution.id)
+            la = datestr2obj(solution.last_activity_at)
+            if s.last_activity_at != la:
+              s.last_activity_at = la
+              updated.append(solution.id)
+              dbs.add(s)
+            continue
           prefix = f'{student.name}-'
           if not solution.name.startswith(prefix): continue
           exercise = solution.name[len(prefix):]
@@ -89,7 +96,7 @@ def update_solutions():
           added.append(solution.id)
         dbs.flush()
     dbs.commit()
-    if added: print('Added:', added)
+    if added or updated: print('Added:', added, 'Updated:', updated)
   except Exception:
     dbs.rollback()
     raise
