@@ -26,6 +26,8 @@ class ROModelView(ModelView):
   can_create = False
   can_edit = False
   can_delete = False
+  page_size = 50
+  can_set_page_size = True
   column_type_formatters = {
     datetime: lambda w, v: Markup(f'<span title="{v}">{naturaltime(v)}</span>')
   }
@@ -83,7 +85,7 @@ class AllSolutionView(ROModelView):
   column_default_sort = ('last_activity_at', True)
   column_labels = {
     'student.name': 'Student', 
-    'exercise.name': 'Exercise'                                                                                                                                                                                                                                                                                                                                                                                                                               
+    'exercise.name': 'Exercise'
   }
   column_extra_row_actions = [
     LinkRowAction('fa fa-arrow-up-right-from-square', lambda s, i, r: current_app.config["GITLAB_BASEURL"] + r.student.name + '/' + r.student.name + '-' + r.exercise.name),
@@ -94,6 +96,11 @@ class AllSolutionView(ROModelView):
   }
 
 class SolutionView(AllSolutionView):
+  column_list = AllSolutionView.column_list + ['pipelines']
+  column_labels = AllSolutionView.column_labels | {'pipelines': 'Progress'}
+  column_formatters = {
+    'pipelines': lambda v, c, m, p: Markup(pipeline2progress(m.pipelines[0]))
+  }
   def get_query(self):
     return super().get_query().filter(self.model.num_pipelines>0)
   def get_count_query(self):
