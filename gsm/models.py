@@ -43,6 +43,20 @@ class Exercise(db.Model):
   id: Mapped[int] = mapped_column(Integer, primary_key=True)
   name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
   solutions: Mapped[List['Solution']] = relationship(back_populates='exercise')
+  @hybrid_property
+  def num_solutions(self):
+    return len([s for s in self.solutions if s.num_pipelines > 0])
+  @num_solutions.expression
+  def num_solutions(cls):
+    return select(func.count(Solution.id)).where(Solution.exercise_id == Exercise.id, Solution.num_pipelines > 0).scalar_subquery()
+  @hybrid_property
+  def num_successful_solutions(self):
+    return len([s for s in self.solutions if s.status == 'success'])
+  @num_successful_solutions.expression
+  def num_successful_solutions(cls):
+    return select(func.count(Solution.id)).where(Solution.exercise_id == Exercise.id, Solution.status == 'success').scalar_subquery()
+
+
   def __repr__(self):
     return self.name
 
@@ -55,6 +69,12 @@ class Solution(db.Model):
   created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
   last_activity_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
   pipelines: Mapped[List['Pipeline']] = relationship(back_populates='solution', order_by = 'desc(Pipeline.created_at)', cascade='all, delete', passive_deletes=True)
+  @hybrid_property
+  def status(self):
+    return self.pipelines[0].status if self.pipelines else None
+  @status.expression
+  def status(cls):
+    return select(Pipeline.status).where(Pipeline.solution_id == Solution.id).order_by(Pipeline.id.desc()).limit(1).scalar_subquery()
   @hybrid_property
   def num_pipelines(self):
     return len(self.pipelines)

@@ -18,6 +18,7 @@ SATUS2ICON = {
   'pending': '🤔',
   'running': '🏃', 
   'created': '👶',
+  None: '❓'
 }
 
 class ROModelView(ModelView):
@@ -63,6 +64,21 @@ def pipeline2progress(pipeline):
 </div>
 """
 
+def exercise2progress(exercise):
+  if exercise.num_solutions == 0: return """
+<div class="progress">
+  <div class="progress-bar bg-info" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+</div>
+"""
+  success = int(exercise.num_successful_solutions / exercise.num_solutions * 100) 
+  warning = 100 - success
+  return f"""
+<div class="progress">
+  <div class="progress-bar bg-success" role="progressbar" style="width: {success}%" aria-valuenow="{success}" aria-valuemin="0" aria-valuemax="100"></div>
+  <div class="progress-bar bg-warning" role="progressbar" style="width: {warning}%" aria-valuenow="{warning}" aria-valuemin="0" aria-valuemax="100"></div>
+</div>
+"""
+
 class AllStudentView(ROModelView):
   column_sortable_list = column_filters = column_list = ['name', 'num_solutions', 'num_pipelines', 'created_at']
   column_default_sort = ('name', False)
@@ -80,12 +96,28 @@ class StudentView(AllStudentView):
   def get_count_query(self):
     return super().get_count_query().filter(self.model.num_pipelines>0)
 
+class ExerciseView(ROModelView):
+  can_view_details = False
+  column_default_sort = ('name', False)
+  column_sortable_list = ['name', 'num_solutions']
+  column_list = column_sortable_list + ['num_successful_solutions']
+  column_labels = {
+    'num_solutions': '# Solutions (with pipelines)',
+    'num_successful_solutions': 'Progress'
+  }
+  column_formatters = {
+    'num_successful_solutions': lambda v, c, m, p: Markup(exercise2progress(m))
+  }
+
 class AllSolutionView(ROModelView):
-  column_sortable_list = column_filters = column_list = ['last_activity_at', 'exercise.name', 'student.name', 'num_pipelines', 'created_at']
+  column_sortable_list = column_filters = column_list = ['last_activity_at', 'exercise.name', 'student.name', 'num_pipelines', 'created_at', 'status']
   column_default_sort = ('last_activity_at', True)
   column_labels = {
     'student.name': 'Student', 
     'exercise.name': 'Exercise'
+  }
+  column_formatters = {
+    'status': lambda v, c, m, p: Markup(f'<span title="{m.status}">{SATUS2ICON[m.status]}</span>'),
   }
   column_extra_row_actions = [
     LinkRowAction('fa fa-arrow-up-right-from-square', lambda s, i, r: current_app.config["GITLAB_BASEURL"] + r.student.name + '/' + r.student.name + '-' + r.exercise.name),
@@ -96,7 +128,7 @@ class AllSolutionView(ROModelView):
   }
 
 class SolutionView(AllSolutionView):
-  column_list = AllSolutionView.column_list + ['pipelines']
+  column_list = AllSolutionView.column_list[:-1] + ['pipelines']
   column_labels = AllSolutionView.column_labels | {'pipelines': 'Progress'}
   column_formatters = {
     'pipelines': lambda v, c, m, p: Markup(pipeline2progress(m.pipelines[0]))
@@ -132,10 +164,6 @@ class PipelineView(ROModelView):
     LinkRowAction('fa fa-file-lines', lambda s, i, r: url_for('solution.details_view', id = r.solution.id)),
   ]
 
-class ExerciseView(ROModelView):
-  can_view_details = False
-  column_list = ['name']
-
 class JobView(ROModelView):
   can_view_details = False
   column_sortable_list = column_filters = column_list = ['pipeline.created_at', 'status', 'name', 'duration', 'runner']
@@ -159,11 +187,11 @@ def init_admin(app):
     index_view = AdminIndexView(name = 'Home', url = '/'),
   )
   admin.add_view(StudentView(Student, db.session))
+  admin.add_view(ExerciseView(Exercise, db.session))
   admin.add_view(SolutionView(Solution, db.session))
   admin.add_view(PipelineView(Pipeline, db.session))
   admin.add_view(AllStudentView(Student, db.session, category = 'Details', endpoint = 'allstudent', name = 'All Students'))
   admin.add_view(AllSolutionView(Solution, db.session, category = 'Details', endpoint = 'allsolution', name = 'All Solutions'))
-  admin.add_view(ExerciseView(Exercise, db.session, category = 'Details'))
   admin.add_view(JobView(Job, db.session, category = 'Details'))
   return admin
 
