@@ -128,7 +128,9 @@ class AllSolutionView(ROModelView):
   }
 
 class SolutionView(AllSolutionView):
-  column_list = AllSolutionView.column_list[:-1] + ['pipelines']
+  column_list = AllSolutionView.column_list[:-1] + ['num_succeses', 'pipelines']
+  column_filters = AllSolutionView.column_filters + ['num_succeses']
+  column_sortable_list = AllSolutionView.column_sortable_list + ['num_succeses']
   column_labels = AllSolutionView.column_labels | {'pipelines': 'Progress'}
   column_formatters = {
     'pipelines': lambda v, c, m, p: Markup(pipeline2progress(m.pipelines[0]))

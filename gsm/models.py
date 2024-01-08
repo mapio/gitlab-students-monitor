@@ -70,6 +70,12 @@ class Solution(db.Model):
   last_activity_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
   pipelines: Mapped[List['Pipeline']] = relationship(back_populates='solution', order_by = 'desc(Pipeline.created_at)', cascade='all, delete', passive_deletes=True)
   @hybrid_property
+  def num_succeses(self):
+    return self.pipelines[0].summary_success if self.pipelines else None
+  @num_succeses.expression
+  def num_succeses(cls):
+    return select(Pipeline.summary_success).where(Pipeline.solution_id == Solution.id).order_by(Pipeline.id.desc()).limit(1).scalar_subquery()
+  @hybrid_property
   def status(self):
     return self.pipelines[0].status if self.pipelines else None
   @status.expression
