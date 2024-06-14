@@ -73,7 +73,7 @@ def update_solutions():
     added, updated = [], []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for student in tqdm(dbs.execute(db.select(Student)).scalars().all(), position = 0):
-        for solution in gl.groups.get(student.id).projects.list(all = True):
+        for solution in gl.groups.get(student.id).projects.list(all = True, archived = False):
           if solution.id in known: 
             s = dbs.query(Solution).get(solution.id)
             la = datestr2obj(solution.last_activity_at)
