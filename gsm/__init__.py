@@ -2,7 +2,7 @@ import logging
 
 from flask import Flask
 
-__version__ = '0.4.3'
+__version__ = '0.4.4'
 
 logging.basicConfig(
   level=logging.INFO,
