@@ -120,7 +120,7 @@ class AllSolutionView(ROModelView):
     'status': lambda v, c, m, p: Markup(f'<span title="{m.status}">{SATUS2ICON[m.status]}</span>'),
   }
   column_extra_row_actions = [
-    LinkRowAction('fa fa-arrow-up-right-from-square', lambda s, i, r: current_app.config["GITLAB_BASEURL"] + r.student.name + '/' + '-' + r.exercise.name),
+    LinkRowAction('fa fa-arrow-up-right-from-square', lambda s, i, r: current_app.config["GITLAB_BASEURL"] + r.student.name + '/' + r.exercise.name),
   ]
   column_details_list = column_list + ['pipelines']
   column_formatters_detail = {
