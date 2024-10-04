@@ -82,9 +82,10 @@ def update_solutions():
               updated.append(solution.id)
               dbs.add(s)
             continue
-          prefix = f'{student.name}-'
-          if not solution.name.startswith(prefix): continue
-          exercise = solution.name[len(prefix):]
+          # prefix = f'{student.name}-'
+          # if not solution.name.startswith(prefix): continue
+          # exercise = solution.name[len(prefix):]
+          exercise = solution.name
           if not exercise in exercise2id: continue
           dbs.add(Solution(
             id = solution.id, 
