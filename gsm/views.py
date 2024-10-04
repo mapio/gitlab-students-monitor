@@ -36,13 +36,13 @@ class ROModelView(ModelView):
 def pipeline2gitlaburl(sol, id):
   student = sol.student.name
   exercise = sol.exercise.name
-  return f'{current_app.config["GITLAB_BASEURL"]}{student}/{student}-{exercise}/-/pipelines/{id}'
+  return f'{current_app.config["GITLAB_BASEURL"]}{student}/{exercise}/-/pipelines/{id}'
 
 def job2gitlaburl(job, id):
   solution = job.pipeline.solution 
   student = solution.student.name
   exercise = solution.exercise.name
-  return f'{current_app.config["GITLAB_BASEURL"]}{student}/{student}-{exercise}/-/jobs/{id}'
+  return f'{current_app.config["GITLAB_BASEURL"]}{student}/{exercise}/-/jobs/{id}'
 
 def jobs2str(jobs):
   return '&nbsp;&nbsp;'.join(f'<span title="{j.status}">{SATUS2ICON[j.status]}</span>&nbsp;<a href="{job2gitlaburl(j, j.id)}">{j.name}</a>' for j in jobs)
