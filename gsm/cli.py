@@ -5,6 +5,7 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 from gitlab import Gitlab
+from gitlab.exceptions import GitlabError
 from tqdm import tqdm
 
 from gsm.models import *
@@ -73,7 +74,12 @@ def update_solutions():
     added, updated = [], []
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for student in tqdm(dbs.execute(db.select(Student)).scalars().all(), position = 0):
-        for solution in gl.groups.get(student.id).projects.list(all = True, archived = False):
+        try:
+          solutions = gl.groups.get(student.id).projects.list(all = True, archived = False)
+        except GitlabError:
+          click.echo(f'Failed to get projects for student {student}')
+          continue
+        for solution in solutions:
           if solution.id in known: 
             s = dbs.query(Solution).get(solution.id)
             la = datestr2obj(solution.last_activity_at)
@@ -113,7 +119,12 @@ def update_pipelines():
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for solution in tqdm(dbs.execute(db.select(Solution)).scalars().all(), position = 0):
         project = gl.projects.get(solution.id)
-        for pipeline in project.pipelines.list(all = True):
+        try:
+          pipelines = project.pipelines.list(all = True)
+        except GitlabError:
+          click.echo(f'Failed to get pipelines for solution {solution}')
+          continue
+        for pipeline in pipelines:
           if pipeline.id in known: continue
           pipeline = project.pipelines.get(pipeline.id)
           if pipeline.user['username'] != solution.student.name:
@@ -153,7 +164,12 @@ def update_jobs():
     with Gitlab(url = current_app.config['GITLAB_ENDPOINT'], private_token = current_app.config['GITLAB_TOKEN']) as gl:
       for pipeline in tqdm(dbs.execute(db.select(Pipeline)).scalars().all(), position = 0):
         if pipeline.solution_id not in projects: projects[pipeline.solution_id] = gl.projects.get(pipeline.solution_id)
-        for job in projects[pipeline.solution_id].pipelines.get(pipeline.id).jobs.list(all = True):
+        try:
+          jobs = projects[pipeline.solution_id].pipelines.get(pipeline.id).jobs.list(all = True)
+        except GitlabError:
+          click.echo(f'Failed to get jobs for pipeline {pipeline}')
+          continue
+        for job in jobs:
           if job.id in known or job.user['username'] != pipeline.solution.student.name: continue
           dbs.add(Job(
             id = job.id, 
